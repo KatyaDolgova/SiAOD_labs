@@ -197,24 +197,50 @@ class Deque:
         return self._size
 
     def push_front(self, value) -> None:
-        """Добавить элемент в начало. Сложность: TODO."""
-        # TODO: создать узел, перевязать ссылки head (учесть пустой дек)
-        raise NotImplementedError
+        """Добавить элемент в начало. Сложность: O(1)."""
+        node = _Node(value, prev=None, next=self._head)
+        if self._head is not None:
+            self._head.prev = node
+        else:
+            self._tail = node  # дек был пуст: новый узел — и голова, и хвост
+        self._head = node
+        self._size += 1
 
     def push_back(self, value) -> None:
-        """Добавить элемент в конец. Сложность: TODO."""
-        # TODO: симметрично push_front для tail
-        raise NotImplementedError
+        """Добавить элемент в конец. Сложность: O(1)."""
+        node = _Node(value, prev=self._tail, next=None)
+        if self._tail is not None:
+            self._tail.next = node
+        else:
+            self._head = node  # дек был пуст: новый узел — и голова, и хвост
+        self._tail = node
+        self._size += 1
 
     def pop_front(self):
         """Извлечь элемент из начала; для пустого дека — IndexError."""
-        # TODO: учесть переход к пустому деку (tail тоже обнуляется)
-        raise NotImplementedError
+        if self._head is None:
+            raise IndexError("pop_front из пустого дека")
+        node = self._head
+        self._head = node.next
+        if self._head is not None:
+            self._head.prev = None
+        else:
+            self._tail = None  # был последний элемент — дек опустел
+        self._size -= 1
+        return node.value
 
     def pop_back(self):
         """Извлечь элемент из конца; для пустого дека — IndexError."""
-        # TODO
-        raise NotImplementedError
+        if self._tail is None:
+            raise IndexError("pop_back из пустого дека")
+        node = self._tail
+        self._tail = node.prev
+        if self._tail is not None:
+            self._tail.next = None
+        else:
+            self._head = None  # был последний элемент — дек опустел
+        self._size -= 1
+        return node.value
 
 
 # ---------------------------------------------------------------------------
