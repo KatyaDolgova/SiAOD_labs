@@ -46,12 +46,39 @@ def bubble_sort(a: list) -> tuple[list, int, int]:
 def insertion_sort(a: list) -> tuple[list, int, int]:
     """Сортировка вставками. Ожидаемая сложность: TODO (лучший/худший случаи)."""
     # TODO: реализовать; считать сравнения и перемещения (сдвиги)
-    raise NotImplementedError
+    copy = list(a)
+    comp = moves = 0
+    for i  in range(1, len(copy)):
+        key =copy[i]
+        j = i-1
+        while j >= 0 and copy[j] > key:
+            comp +=1
+            copy[j+1] =  copy[j]
+            moves +=1
+            j -=1
+        if j >= 0:
+            comp +=1
+        copy[j+1] = key
+    return copy, comp,moves
 
 
 def selection_sort(a: list) -> tuple[list, int, int]:
     """Сортировка выбором. Ожидаемая сложность: TODO (почему не зависит от входа?)."""
     # TODO: реализовать; считать сравнения и обмены
+    copy = list(a)
+    comp = swaps = 0
+    n = len(copy)
+    for i in range(n - 1):
+        min_idx = i
+        for j in range(i+1, n):
+            comp +=1
+            if copy[j] < copy[min_idx]:
+                min_idx = j
+        if min_idx != i:
+            copy[i], copy[min_idx] = copy[min_idx], copy[i]
+            swaps += 1
+    return copy, comp, swaps
+
     raise NotImplementedError
 
 
