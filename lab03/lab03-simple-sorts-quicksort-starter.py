@@ -79,8 +79,6 @@ def selection_sort(a: list) -> tuple[list, int, int]:
             swaps += 1
     return copy, comp, swaps
 
-    raise NotImplementedError
-
 
 # ---------------------------------------------------------------------------
 # 2. QuickSort с рандомизированным опорным элементом
@@ -94,11 +92,17 @@ def quick_sort(a: list, rng: random.Random | None = None) -> list:
     в отчёте, объяснить роль рандомизации). rng передаётся снаружи, чтобы
     запуск был воспроизводим по seed варианта.
     """
+     # TODO: реализовать (рекурсивно или циклом со стеком);
+     # TODO: опорный элемент — a[rng.randrange(lo, hi)], не первый и не последний.
     if rng is None:
         rng = random.Random()
-    # TODO: реализовать (рекурсивно или циклом со стеком);
-    # TODO: опорный элемент — a[rng.randrange(lo, hi)], не первый и не последний.
-    raise NotImplementedError
+    if len(a) <= 1:
+        return list(a)
+    pivot = a[rng.randrange(0, len(a))]
+    less = [x for x in a if x < pivot]
+    equal = [x for x in a if x == pivot]
+    greater = [x for x in a if x > pivot]
+    return quick_sort(less, rng) + equal + quick_sort(greater, rng)
 
 
 # ---------------------------------------------------------------------------
