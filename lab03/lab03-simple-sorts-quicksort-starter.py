@@ -109,6 +109,21 @@ def quick_sort(a: list, rng: random.Random | None = None) -> list:
 # 3. Демонстрация стабильности на парах (ключ, метка)
 # ---------------------------------------------------------------------------
 
+class _ByKey:
+    """Обёртка для сравнения пар только по ключу (p[0]), метка игнорируется."""
+    __slots__ = ("pair",)
+
+    def __init__(self, pair):
+        self.pair = pair
+
+    def __lt__(self, other):
+        return self.pair[0] < other.pair[0]
+
+    def __gt__(self, other):
+        return self.pair[0] > other.pair[0]
+
+    def __eq__(self, other):
+        return self.pair[0] == other.pair[0]
 
 def stability_demo() -> None:
     """Показать, какие из четырёх сортировок стабильны.
@@ -119,7 +134,20 @@ def stability_demo() -> None:
     ключах. Вывод о стабильности каждой сортировки включить в отчёт.
     """
     # TODO: подготовить пары, прогнать все четыре сортировки, напечатать итог
-    raise NotImplementedError
+    pairs = [(2, "a"), (1, "b"), (2, "c"), (1, "d")]
+    wrapped = [_ByKey(p) for p in pairs]
+    algorithms = {
+        "bubble_sort": lambda a: bubble_sort(a)[0],
+        "insertion_sort": lambda a: insertion_sort(a)[0],
+        "selection_sort": lambda a: selection_sort(a)[0],
+        "quick_sort": lambda a: quick_sort(a, random.Random(0)),
+    }
+    print("\nДемонстрация стабильности (вход:", pairs, "):")
+    for name, fn in algorithms.items():
+        result = fn(list(wrapped))
+        labels = [w.pair[1] for w in result]
+        print(f"  {name}: порядок меток = {labels}")
+
 
 
 # ---------------------------------------------------------------------------
