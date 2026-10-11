@@ -11,9 +11,11 @@
 from __future__ import annotations
 
 import argparse
+import math
 import random
 import statistics
 import time
+from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # 1. Простые сортировки со счётчиками (сортируют КОПИЮ входа, вход не меняют)
@@ -233,34 +235,81 @@ def bench(fn, data: list) -> float:
     return statistics.median(times)
 
 
-def run_benchmarks(seed: int) -> None:
-    """Замеры всех алгоритмов на трёх классах входов; результат — таблица в stdout."""
+def log_log_slope(points: list[tuple[int, float]]) -> float:
+    """Наклон прямой в осях (log n, log t) - оценка показателя степени."""
+    xs = [math.log10(n) for n, _ in points]
+    ys = [math.log10(t) for _, t in points]
+    mx, my = sum(xs) / len(xs), sum(ys) / len(ys)
+    return (sum((x - mx) * (y - my) for x, y in zip(xs, ys))
+            / sum((x - mx) ** 2 for x in xs))
+
+
+def run_benchmarks(seed: int) -> dict:
+    """Замеры всех алгоритмов на трёх классах входов; результат - таблица в stdout."""
     plans = [
         ("bubble_sort", ALGORITHMS["bubble_sort"], SIZES_QUADRATIC),
         ("insertion_sort", ALGORITHMS["insertion_sort"], SIZES_QUADRATIC),
         ("selection_sort", ALGORITHMS["selection_sort"], SIZES_QUADRATIC),
         ("quick_sort", lambda a: quick_sort(a, random.Random(seed)), SIZES_QUICK),
     ]
+    results: dict[str, dict[str, list[tuple[int, float]]]] = {}
     for name, fn, sizes in plans:
         print(f"\n{name}:")
+        results[name] = {"упорядоченный": [], "случайный": [], "обратный": []}
         for n in sizes:
             for cls, data in make_inputs(n, seed).items():
-                print(f"  n={n:>7}  вход={cls:<13} t={bench(fn, data):.6f} c")
-    # TODO: построить log-log графики (matplotlib) по классам входов;
-    # TODO: сопоставить наклоны с O(n^2) и O(n log n), объяснить расхождения
-    #       (в т. ч. лучший случай вставок и поведение пузырька на упорядоченном входе);
-    # TODO: включить в отчёт таблицы счётчиков сравнений/обменов.
+                t = bench(fn, data)
+                results[name][cls].append((n, t))
+                print(f"  n={n:>7}  вход={cls:<13} t={t:.6f} c")
+        print(f"  наклоны log-log: " + ", ".join(
+            f"{cls}={log_log_slope(points):.2f}" for cls, points in results[name].items()
+        ))
+    return results
+
+
+def plot_results(results: dict, out_dir: Path) -> None:
+    """Log-log графики времени от размера входа - отдельный график на алгоритм."""
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print("\nmatplotlib не установлен - графики пропущены "
+              "(pip install -r requirements.txt)")
+        return
+
+    fig, axes = plt.subplots(2, 2, figsize=(12, 9))
+    for ax, name in zip(axes.flat, results):
+        for cls, points in results[name].items():
+            ns = [n for n, _ in points]
+            ts = [t for _, t in points]
+            ax.plot(ns, ts, marker="o",
+                    label=f"{cls} (наклон ≈ {log_log_slope(points):.2f})")
+        ax.set_xscale("log")
+        ax.set_yscale("log")
+        ax.set_xlabel("размер входа n")
+        ax.set_ylabel("время, с")
+        ax.set_title(name)
+        ax.grid(True, which="both", linewidth=0.3)
+        ax.legend(fontsize=8)
+    fig.tight_layout()
+    path = out_dir / "lab03_sorts.png"
+    fig.savefig(path, dpi=150)
+    print(f"\nГрафик сохранён: {path}")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--variant", type=int, required=True, help="номер варианта")
+    ap.add_argument("--out", type=Path, default=Path.cwd(),
+                    help="каталог для графиков (по умолчанию текущий)")
     args = ap.parse_args()
     seed = 30 + args.variant
     random.seed(seed)
     self_check()
     stability_demo()
-    run_benchmarks(seed)
+    results = run_benchmarks(seed)
+    plot_results(results, args.out)
 
 
 if __name__ == "__main__":
