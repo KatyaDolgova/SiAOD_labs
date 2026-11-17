@@ -18,6 +18,7 @@ import bisect
 import random
 import statistics
 import time
+from pathlib import Path
 
 # ---------------------------------------------------------------------------
 # 1. Алгоритмы поиска (реализуются вручную, без in/index/bisect в основной части)
@@ -207,9 +208,16 @@ def mean_comparisons(fn, a: list[int], keys: list[int]) -> float:
     return statistics.mean(fn(a, k)[1] for k in keys)
 
 
-def run_benchmarks(seed: int) -> None:
+DISTRIBUTIONS = ("uniform", "exponential")
+
+
+def run_benchmarks(seed: int) -> dict:
+    """Печатает полную таблицу (присутствующие и отсутствующие ключи) и
+    возвращает результаты для присутствующих ключей — для графиков
+    (distribution -> algorithm -> список (n, среднее число сравнений, время))."""
     rng = random.Random(seed)
-    for distribution in ("uniform", "exponential"):
+    results = {dist: {name: [] for name, _ in ALGORITHMS} for dist in DISTRIBUTIONS}
+    for distribution in DISTRIBUTIONS:
         print(f"\nРаспределение: {distribution}")
         for n in SIZES:
             a = make_dataset(n, distribution, rng)
@@ -219,23 +227,67 @@ def run_benchmarks(seed: int) -> None:
                 for name, fn in ALGORITHMS:
                     if name == "linear" and n > 30_000:
                         continue  # линейный поиск: большие n занимают минуты
+                    cmp_mean = mean_comparisons(fn, a, keys)
+                    t = bench(fn, a, keys)
                     print(f"  n={n:>7}  ключ {label:<4}  {name:<13}"
-                          f"  сравнений={mean_comparisons(fn, a, keys):>10.1f}"
-                          f"  t={bench(fn, a, keys):.6f} c")
-    # TODO: построить графики «среднее число сравнений от n» и «время от n»
-    # TODO: (matplotlib, отдельно для каждого распределения) и включить в отчёт;
-    # TODO: объяснить, когда интерполяционный поиск превосходит бинарный
-    # TODO: и на каких данных он деградирует к O(n).
+                          f"  сравнений={cmp_mean:>10.1f}  t={t:.6f} c")
+                    if present:
+                        results[distribution][name].append((n, cmp_mean, t))
+    return results
+
+
+def plot_results(results: dict, out_dir: Path) -> None:
+    """Графики «сравнения от n» и «время от n» для присутствующих ключей,
+    отдельно для каждого распределения (докажем/опровергнем O(log n) и
+    O(log log n) по реальным замерам — КИМ-06, п.5)."""
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print("\nmatplotlib не установлен — графики пропущены "
+              "(pip install -r requirements.txt)")
+        return
+
+    fig, axes = plt.subplots(2, len(DISTRIBUTIONS), figsize=(7 * len(DISTRIBUTIONS), 9))
+    for col, dist in enumerate(DISTRIBUTIONS):
+        ax_cmp, ax_time = axes[0, col], axes[1, col]
+        for name, points in results[dist].items():
+            if not points:
+                continue
+            ns = [p[0] for p in points]
+            cmps = [p[1] for p in points]
+            ts = [p[2] for p in points]
+            ax_cmp.plot(ns, cmps, marker="o", label=name)
+            ax_time.plot(ns, ts, marker="o", label=name)
+        for ax, ylabel, title in (
+            (ax_cmp, "среднее число сравнений", f"{dist}: сравнения от n"),
+            (ax_time, f"время {N_KEYS} поисков, с", f"{dist}: время от n"),
+        ):
+            ax.set_xscale("log")
+            ax.set_yscale("log")
+            ax.set_xlabel("размер массива n")
+            ax.set_ylabel(ylabel)
+            ax.set_title(title)
+            ax.grid(True, which="both", linewidth=0.3)
+            ax.legend(fontsize=8)
+    fig.tight_layout()
+    path = out_dir / "lab06_search.png"
+    fig.savefig(path, dpi=150)
+    print(f"\nГрафик сохранён: {path}")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--variant", type=int, required=True, help="номер варианта")
+    ap.add_argument("--out", type=Path, default=Path.cwd(),
+                    help="каталог для графика (по умолчанию текущий)")
     args = ap.parse_args()
     seed = 30 + args.variant
     random.seed(seed)
     self_check()
-    run_benchmarks(seed)
+    results = run_benchmarks(seed)
+    plot_results(results, args.out)
 
 
 if __name__ == "__main__":
