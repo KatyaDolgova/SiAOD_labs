@@ -119,7 +119,7 @@ class BST:
             else:
                 current = current.right
         if current is None:
-            return  # ключа нет - по условию игнорируем
+            return  # ключа нет
 
         if current.left is not None and current.right is not None:
             # случай 3: преемник - минимум правого поддерева (шаг вправо,
